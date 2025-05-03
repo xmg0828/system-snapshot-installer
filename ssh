@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# SSH密钥自动配置脚本
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}SSH密钥自动配置脚本${NC}"
+echo "--------------------------------"
+
+# 读取用户输入
+read -p "请输入用户名: " username
+read -p "请输入服务器IP地址: " ip_address
+read -p "请输入SSH端口: " port
+
+# 检查是否已经有SSH密钥
+if [ -f ~/.ssh/id_rsa ]; then
+    echo -e "${YELLOW}检测到现有SSH密钥，是否覆盖？${NC}"
+    read -p "是否覆盖现有密钥？(y/n): " overwrite
+    if [[ $overwrite == "y" || $overwrite == "Y" ]]; then
+        echo -e "${GREEN}生成新的SSH密钥...${NC}"
+        ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa -q
+    else
+        echo -e "${YELLOW}使用现有密钥...${NC}"
+    fi
+else
+    echo -e "${GREEN}生成SSH密钥...${NC}"
+    ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa -q
+fi
+
+echo -e "${GREEN}正在复制公钥到远程服务器...${NC}"
+echo -e "${YELLOW}请输入远程服务器密码：${NC}"
+
+# 使用ssh-copy-id命令
+ssh-copy-id -p $port $username@$ip_address
+
+# 检查是否成功
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}SSH密钥配置成功！${NC}"
+    echo -e "${GREEN}现在你可以使用以下命令无密码登录：${NC}"
+    echo -e "${GREEN}ssh -p $port $username@$ip_address${NC}"
+    
+    # 保存连接信息到文件
+    echo "#!/bin/bash" > ~/ssh-connect.sh
+    echo "ssh -p $port $username@$ip_address" >> ~/ssh-connect.sh
+    chmod +x ~/ssh-connect.sh
+    echo -e "${GREEN}已创建快捷连接脚本：~/ssh-connect.sh${NC}"
+else
+    echo -e "${RED}SSH密钥配置失败，请检查输入信息是否正确${NC}"
+fi
